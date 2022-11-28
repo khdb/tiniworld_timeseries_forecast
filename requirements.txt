@@ -7,6 +7,10 @@ pandas
 pytest
 seaborn
 scikit-learn
+jupyter
+plotly
+
+python-dotenv
 
 #Use for FB Prophet
 cmdstanpy~=0.9.68
