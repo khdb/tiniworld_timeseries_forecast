@@ -7,3 +7,8 @@ pandas
 pytest
 seaborn
 scikit-learn
+
+#Use for FB Prophet
+cmdstanpy~=0.9.68
+prophet~=1.0.1
+pystan~=2.19.1.1
