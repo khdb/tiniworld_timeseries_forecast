@@ -1,0 +1,9 @@
+colorama
+ipdb
+ipykernel
+matplotlib
+numpy
+pandas
+pytest
+seaborn
+scikit-learn
