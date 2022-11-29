@@ -10,3 +10,4 @@ raw_data/
 *.ipynb
 
 khd_readme.txt
+.python-version
