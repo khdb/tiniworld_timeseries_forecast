@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from tiniworld_core.data_sources.local_disk import get_data
+from tiniworld_core.logic.params import LOCAL_REGISTRY_PATH
 
 from prophet import Prophet
 import plotly.express as px
@@ -155,17 +156,24 @@ class Tiniworld:
     def save_all_models(self):
         all_df = self.get_stores_ds_alltime()
         keys = list(all_df.keys())
+
+        #ouput path for saving models
+        save_path = os.path.join(os.path.expanduser(LOCAL_REGISTRY_PATH),"")
+        #f'../model/{store_name}_prophet_model.json'
+
         for k in keys:
 
             model = self.train_model(all_df[k])
 
-            with open(f'../model/{k}_prophet_model.json', 'w') as fout:
+            with open(f'{save_path}/{k}_prophet_model.json', 'w') as fout:
                 json.dump(model_to_json(model), fout)  # Save model
             print(f'saving {k}')
         return keys
 
     def load_model(self,store_name):
-        with open(f'../model/{store_name}_prophet_model.json', 'r') as fin:
+        #path containing saved models
+        model_path = os.path.join(os.path.expanduser(LOCAL_REGISTRY_PATH), f"{store_name}_prophet_model.json")
+        with open(model_path, 'r') as fin:
             model = model_from_json(json.load(fin))  # Load model
         return model
 
