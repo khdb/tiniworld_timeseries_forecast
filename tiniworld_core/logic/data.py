@@ -2,6 +2,15 @@ import os
 import pandas as pd
 from tiniworld_core.data_sources.local_disk import get_data
 
+from prophet import Prophet
+import plotly.express as px
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import json
+from prophet.serialize import model_to_json, model_from_json
+
 #KHD: 28.11.2022
 
 class Tiniworld:
@@ -85,10 +94,80 @@ class Tiniworld:
 
         return dict_loc
 
+    def get_store_names(self):
+        all_df = self.get_stores_ds_alltime()
+        keys = list(all_df.keys())
+        return keys
+
     def get_raw_data(self) -> pd.DataFrame:
         df = get_data("ticket-sales") #filename without the file extenstion
         return df
 
+    def train_model(self,df):
+
+        #initiate and train a model on a DF
+        model = Prophet()
+        # add holiday seasonality
+        model.add_country_holidays(country_name='VN')
+        model.fit(df)
+
+        return (model)
+
+    def predict_model(self,model,forecast):
+        #
+        future = model.make_future_dataframe(periods=forecast)
+        pred = model.predict(future)
+
+        return pred
+
+    def plot_info(self,location):
+
+        forecast=90
+
+        #get all Data
+
+        df_all = self.get_stores_ds_alltime()
+
+        #select one location
+        df = df_all[location]
+
+        #prepare Data
+        df = df.groupby('ds').sum(numeric_only=False)[['y']].reset_index()
+
+        # Plot that shows the historical data by day of the week
+        dayofweek_colors = {0:'k',1:'r',2:'g',3:'b',4:'c',5:'m',6:'y'}
+        days = ['Mo','Tu','We','Th','Fr','Sa','So']
+        plt.close()
+        fig, ax = plt.subplots(figsize=(12,6))
+        ax.scatter(df['ds'], df['y'], c=df['ds'].dt.dayofweek.map(dayofweek_colors))
+        handles = [mpatches.Patch(color=v, label=k) for v, k in zip(dayofweek_colors.values(), days)]
+        legend = ax.legend(handles=handles,title="Day of the week")
+        ax.add_artist(legend)
+        plt.show()
+
+        model = self.train_model(df)
+        pred = self.predict_model(model,forecast)
+
+        fig1 = model.plot_components(pred)
+
+        return pred
+
+    def save_all_models(self):
+        all_df = self.get_stores_ds_alltime()
+        keys = list(all_df.keys())
+        for k in keys:
+
+            model = self.train_model(all_df[k])
+
+            with open(f'../model/{k}_prophet_model.json', 'w') as fout:
+                json.dump(model_to_json(model), fout)  # Save model
+            print(f'saving {k}')
+        return keys
+
+    def load_model(self,store_name):
+        with open(f'../model/{store_name}_prophet_model.json', 'r') as fin:
+            model = model_from_json(json.load(fin))  # Load model
+        return model
 
     def ping(self):
         """
