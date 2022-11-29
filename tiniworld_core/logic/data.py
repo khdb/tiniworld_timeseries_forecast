@@ -9,6 +9,7 @@ class Tiniworld:
     def get_stores_ds(self) -> dict:
         """
         This function returns a Python dict.
+        The timeperiod is just between the covit gaps.
         Its keys should be 'store_code'
         Its values should be pandas.DataFrames loaded from csv files
         """
@@ -48,6 +49,41 @@ class Tiniworld:
         #End from David
 
         return dict_loc_fp
+
+    def get_stores_ds_alltime(self) -> dict:
+        """
+        This function returns a Python dict.
+        Its keys should be 'store_code'
+        Its values should be pandas.DataFrames loaded from csv files
+        """
+
+        df = get_data("ticket-sales") #filename without the file extenstion
+        #print("df columns: ", df.columns)
+
+        #From David
+        ## start of cleaning pipeline
+        #add column with date as datetime and right name for prophet (ds)
+        df['ds']=pd.to_datetime(df['docDate'])
+
+        #add column with target 'y'
+        df.loc[:,'y'] = df['qty']
+
+        #find the 30 locations with the most data - treshold is entries in dataset for one location
+        treshold = 2300
+        store_list = df.groupby('store_code').count()[(df.groupby('store_code').count()>treshold)['y']]
+
+        #extract location keys
+        store_code = store_list.index
+
+        #create  Dictionary of DataFrames for every location
+        dict_loc = {}
+        for n in (store_code):
+            dict_loc[n]=df[df['store_code']==n]
+
+
+        #End from David
+
+        return dict_loc
 
     def get_raw_data(self) -> pd.DataFrame:
         df = get_data("ticket-sales") #filename without the file extenstion
