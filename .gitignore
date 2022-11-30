@@ -11,4 +11,5 @@ raw_data/
 
 khd_readme.txt
 .python-version
-webapp/
+/webapp
+/model
