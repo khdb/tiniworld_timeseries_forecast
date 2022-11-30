@@ -5,6 +5,7 @@ from tiniworld_core.logic.params import LOCAL_REGISTRY_PATH
 
 from prophet import Prophet
 import plotly.express as px
+import plotly.graph_objects as go
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -121,9 +122,7 @@ class Tiniworld:
 
         return pred
 
-    def plot_info(self,location):
-
-        forecast=90
+    def plot_info(self,location,forecast):
 
         #get all Data
 
@@ -152,6 +151,72 @@ class Tiniworld:
         fig1 = model.plot_components(pred)
 
         return pred
+
+    def plot_forecast(self,df: pd.DataFrame, future: pd.DataFrame):
+        # df : requiers a df with the recorded data
+        # future : requiers a input from prophet.make_future()
+
+        fc_time = (future.ds.max()-df.ds.max()).days
+
+        layout = {
+            # to highlight the forecast we use shapes and create a rectangular
+            'shapes': [
+                {
+                    'type': 'rect',
+                    # x-reference is assigned to the x-values
+                    'xref': 'x',
+                    # y-reference is assigned to the plot paper [0,1]
+                    'yref': 'paper',
+                    'x0': df.ds.max(),
+                    'y0': 0,
+                    'x1': future.ds.max(),
+                    'y1': 1,
+                    'fillcolor': '#ff9900', # color is orange
+                    'opacity': 0.5,
+                    'line': {
+                        'width': 0,
+                    }
+                }
+
+            ]
+        }
+
+        # Create figure
+        fig = go.Figure()
+
+        fig.add_trace(
+            go.Scatter(x=list(future.ds), y=list(future.yhat)))
+
+        # Set title
+        fig.update_layout(
+            title_text="Tickets sold in the last 2 years and forecast for 2 month"
+        )
+
+        fig.update_layout(layout)
+
+        # Add range slider with 2 options : forecast and all
+        fig.update_layout(
+            xaxis=dict(
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=fc_time-1,
+                            label="forecast",
+                            step="day",
+                            stepmode="todate"),
+                        dict(step="all")
+                    ])
+                ),
+                rangeslider=dict(
+                    visible=True
+                ),
+                type="date"
+            )
+        )
+
+        fig.show()
+
+
+
 
     def save_all_models(self):
         all_df = self.get_stores_ds_alltime()
