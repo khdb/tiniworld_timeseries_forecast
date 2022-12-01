@@ -6,6 +6,7 @@ tini = Tiniworld()
 store_dataset = tini.get_stores_ds()
 #save the fitted model on disk
 #tini.save_all_models() #works
+tini.cv_and_save_all_models() # 01.12.2022
 model = tini.load_model('TW-PS002')
 print("loaded model: ", type(model))
 
