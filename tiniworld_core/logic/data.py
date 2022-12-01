@@ -4,6 +4,11 @@ from tiniworld_core.data_sources.local_disk import get_data
 from tiniworld_core.logic.params import LOCAL_REGISTRY_PATH
 
 from prophet import Prophet
+from prophet.diagnostics import cross_validation
+from prophet.serialize import model_to_json, model_from_json
+from prophet.plot import plot_cross_validation_metric, performance_metrics
+
+import itertools
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
@@ -11,7 +16,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import json
-from prophet.serialize import model_to_json, model_from_json
+
 
 #KHD: 28.11.2022
 
@@ -96,6 +101,9 @@ class Tiniworld:
 
         return dict_loc
 
+    def sum_days(self,df):
+        df.groupby
+
     def get_store_names(self):
         all_df = self.get_stores_ds_alltime()
         keys = list(all_df.keys())
@@ -157,6 +165,7 @@ class Tiniworld:
         # future : requiers a input from prophet.make_future()
 
         fc_time = (future.ds.max()-df.ds.max()).days
+        name = list(df[:1]['store_name'])[0]
 
         layout = {
             # to highlight the forecast we use shapes and create a rectangular
@@ -247,3 +256,88 @@ class Tiniworld:
         You call ping I print pong.
         """
         print("pong")
+
+
+    def cv_model(self,df,location) -> pd.DataFrame:
+        '''
+        Does a Crossvalidation for a given prepared df(ds,y).
+        Finds the best params from a param_grid (defined below) for the df, optimized for MAE.
+        Fits and trains a model with this params and saves it to a given folder (LOCAL_REGISTRY_PATH)
+        Needs the location code for naming the file.
+        Returns a pd.DataFrame with the used parameters.
+        '''
+
+        param_grid = {
+        'changepoint_prior_scale': [0.05,0.075,0.1],
+        'seasonality_prior_scale': [0.0025,0.005,0.0075],
+                }
+
+        # Generate all combinations of parameters
+        all_params = [dict(zip(param_grid.keys(), v)) for v in itertools.product(*param_grid.values())]
+
+        maes = []  # Store the MAE for each params here
+        locations = [] # Store the names of the location here
+
+
+        # Use cross validation to evaluate all parameters
+        for params in all_params:
+            model_1 = Prophet(**params)
+            model_1.add_country_holidays(country_name='VN') # Add holidays in Vietnam
+            model_1.fit(df)  # Fit model with given params
+
+            df_cv_1 = cross_validation(model_1,  horizon='60 days', parallel="processes")
+            df_p_1 = performance_metrics(df_cv_1, rolling_window=1)
+
+            maes.append(df_p_1['mae'].values[0])
+            locations.append(location)
+
+        # Find the best parameters
+        tuning_results = pd.DataFrame(all_params)
+        tuning_results['location'] = locations
+        tuning_results['mae'] = maes
+
+        # creating output and setup best params
+        y = tuning_results.sort_values('mae').head(1)
+        x = {'changepoint_prior_scale':list(y['changepoint_prior_scale'])[0],'seasonality_prior_scale':list(y['seasonality_prior_scale'])[0]}
+
+        # retrain with best params
+        model_2 = Prophet(**x)
+        model_2.add_country_holidays(country_name='VN')
+        model_2.fit(df)
+
+        #ouput path for saving models
+        save_path = os.path.join(os.path.expanduser(LOCAL_REGISTRY_PATH),"")
+
+        with open(f'{save_path}/{location}_prophet_model.json', 'w') as fout:
+            json.dump(model_to_json(model_2), fout)  # Save model
+            print(f'saving {location}')
+
+        # return the parameters and MAE for this model
+        return y
+
+    def cv_and_save_all_models(self):
+        '''
+        Does a crossvalidation for each location,
+        trains a model each with the best parameters and saves it.
+        Returns a report.
+        '''
+        report = pd.DataFrame(columns=['changepoint_prior_scale','seasonality_prior_scale','location','mae'])
+        df_all = self.get_stores_ds_alltime()
+        store_names = self.get_store_names()
+
+        #select store
+        n = len(store_names)
+
+        # If testing set n to 2
+        # n = 2
+
+        for store_nu in range(n):
+            location = store_names[store_nu]
+            df_one = df_all[store_names[store_nu]]
+            df = df_one[['ds','y']]
+            df = df.groupby('ds').sum().reset_index()
+            y = self.cv_model(df,location)
+            report = pd.concat([report,y])
+        report.to_csv(f'{LOCAL_REGISTRY_PATH}/report.csv')
+        print(f'Done ... saved {n} models and one report to {LOCAL_REGISTRY_PATH}')
+        return report
