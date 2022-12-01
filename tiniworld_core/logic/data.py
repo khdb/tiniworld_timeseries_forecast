@@ -9,10 +9,7 @@ from prophet.serialize import model_to_json, model_from_json
 from prophet.plot import plot_cross_validation_metric, performance_metrics
 
 import itertools
-import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import json
@@ -21,51 +18,26 @@ import json
 #KHD: 28.11.2022
 
 class Tiniworld:
-    # get the dictionary containing all locations as DF
-    def get_stores_ds(self) -> dict:
-        """
-        This function returns a Python dict.
-        The timeperiod is just between the covit gaps.
-        Its keys should be 'store_code'
-        Its values should be pandas.DataFrames loaded from csv files
-        """
 
+    def ping(self):
+        """
+        You call ping I print pong.
+        """
+        print("pong")
+
+#
+# *** getting data ***
+#
+    #load data from folder
+    def get_raw_data(self) -> pd.DataFrame:
+        '''
+        including item translation to english
+        split adults and kids
+        '''
         df = get_data("ticket-sales") #filename without the file extenstion
-        #print("df columns: ", df.columns)
+        return df
 
-        #From David
-        ## start of cleaning pipeline
-        #add column with date as datetime and right name for prophet (ds)
-        df['ds']=pd.to_datetime(df['docDate'])
-
-        #remove date before first covit gap
-        df = df[df['ds']>='2020-05-28']
-
-        #add column with target 'y'
-        df.loc[:,'y'] = df['qty']
-
-        #find the 30 locations with the most data - treshold is entries in dataset for one location
-        treshold = 2300
-        store_list = df.groupby('store_code').count()[(df.groupby('store_code').count()>treshold)['y']]
-
-        #extract location keys
-        store_code = store_list.index
-
-        #create  Dictionary of DataFrames for every location
-        dict_loc = {}
-        for n in (store_code):
-            dict_loc[n]=df[df['store_code']==n]
-
-        #get data until second covit break for a forecast to impute the break
-        dict_loc_fp = {}
-        for n in (store_code):
-            dict_loc_fp[n]=dict_loc[n][[dict_loc[n]['ds']<'2021-07-20'][0]]
-
-
-        #End from David
-
-        return dict_loc_fp
-
+    # get the dictionary containing all locations as DF
     def get_stores_ds_alltime(self) -> dict:
         """
         This function returns a Python dict.
@@ -74,9 +46,7 @@ class Tiniworld:
         """
 
         df = get_data("ticket-sales") #filename without the file extenstion
-        #print("df columns: ", df.columns)
 
-        #From David
         ## start of cleaning pipeline
         #add column with date as datetime and right name for prophet (ds)
         df['ds']=pd.to_datetime(df['docDate'])
@@ -96,22 +66,22 @@ class Tiniworld:
         for n in (store_code):
             dict_loc[n]=df[df['store_code']==n]
 
-
-        #End from David
-
         return dict_loc
-
-    def sum_days(self,df):
-        df.groupby
 
     def get_store_names(self):
         all_df = self.get_stores_ds_alltime()
         keys = list(all_df.keys())
         return keys
 
-    def get_raw_data(self) -> pd.DataFrame:
-        df = get_data("ticket-sales") #filename without the file extenstion
-        return df
+#
+#  *** modeling ***
+#
+    def load_model(self,store_name):
+        #path containing saved models
+        model_path = os.path.join(os.path.expanduser(LOCAL_REGISTRY_PATH), f"{store_name}_prophet_model.json")
+        with open(model_path, 'r') as fin:
+            model = model_from_json(json.load(fin))  # Load model
+        return model
 
     def train_model(self,df):
 
@@ -121,143 +91,34 @@ class Tiniworld:
         model.add_country_holidays(country_name='VN')
         model.fit(df)
 
-        return (model)
+        return model
 
-    def predict_model(self,model,forecast):
-        #
+    def make_future(self,location,forecast=60):
+        '''
+        model = trained model
+        forecast = int(number of days to forecast)
+
+        '''
+        model = self.load_model(location)
+        future = model.make_future_dataframe(periods=forecast)
+
+        return future
+
+    def predict_model(self,location,forecast=60):
+        '''
+        model = trained model
+        forecast = int(number of days to forecast)
+
+        '''
+        model = self.load_model(location)
         future = model.make_future_dataframe(periods=forecast)
         pred = model.predict(future)
 
         return pred
 
-    def plot_info(self,location,forecast):
-
-        #get all Data
-
-        df_all = self.get_stores_ds_alltime()
-
-        #select one location
-        df = df_all[location]
-
-        #prepare Data
-        df = df.groupby('ds').sum(numeric_only=False)[['y']].reset_index()
-
-        # Plot that shows the historical data by day of the week
-        dayofweek_colors = {0:'k',1:'r',2:'g',3:'b',4:'c',5:'m',6:'y'}
-        days = ['Mo','Tu','We','Th','Fr','Sa','So']
-        plt.close()
-        fig, ax = plt.subplots(figsize=(12,6))
-        ax.scatter(df['ds'], df['y'], c=df['ds'].dt.dayofweek.map(dayofweek_colors))
-        handles = [mpatches.Patch(color=v, label=k) for v, k in zip(dayofweek_colors.values(), days)]
-        legend = ax.legend(handles=handles,title="Day of the week")
-        ax.add_artist(legend)
-        plt.show()
-
-        model = self.train_model(df)
-        pred = self.predict_model(model,forecast)
-
-        fig1 = model.plot_components(pred)
-
-        return pred
-
-    def plot_forecast(self,df: pd.DataFrame, future: pd.DataFrame):
-        # df : requiers a df with the recorded data
-        # future : requiers a input from prophet.make_future()
-
-        fc_time = (future.ds.max()-df.ds.max()).days
-        name = list(df[:1]['store_name'])[0]
-
-        layout = {
-            # to highlight the forecast we use shapes and create a rectangular
-            'shapes': [
-                {
-                    'type': 'rect',
-                    # x-reference is assigned to the x-values
-                    'xref': 'x',
-                    # y-reference is assigned to the plot paper [0,1]
-                    'yref': 'paper',
-                    'x0': df.ds.max(),
-                    'y0': 0,
-                    'x1': future.ds.max(),
-                    'y1': 1,
-                    'fillcolor': '#ff9900', # color is orange
-                    'opacity': 0.5,
-                    'line': {
-                        'width': 0,
-                    }
-                }
-
-            ]
-        }
-
-        # Create figure
-        fig = go.Figure()
-
-        fig.add_trace(
-            go.Scatter(x=list(future.ds), y=list(future.yhat)))
-
-        # Set title
-        fig.update_layout(
-            title_text="Tickets sold in the last 2 years and forecast for 2 month"
-        )
-
-        fig.update_layout(layout)
-
-        # Add range slider with 2 options : forecast and all
-        fig.update_layout(
-            xaxis=dict(
-                rangeselector=dict(
-                    buttons=list([
-                        dict(count=fc_time-1,
-                            label="forecast",
-                            step="day",
-                            stepmode="todate"),
-                        dict(step="all")
-                    ])
-                ),
-                rangeslider=dict(
-                    visible=True
-                ),
-                type="date"
-            )
-        )
-
-        fig.show()
-
-
-
-
-    def save_all_models(self):
-        all_df = self.get_stores_ds_alltime()
-        keys = list(all_df.keys())
-
-        #ouput path for saving models
-        save_path = os.path.join(os.path.expanduser(LOCAL_REGISTRY_PATH),"")
-        #f'../model/{store_name}_prophet_model.json'
-
-        for k in keys:
-
-            model = self.train_model(all_df[k])
-
-            with open(f'{save_path}/{k}_prophet_model.json', 'w') as fout:
-                json.dump(model_to_json(model), fout)  # Save model
-            print(f'saving {k}')
-        return keys
-
-    def load_model(self,store_name):
-        #path containing saved models
-        model_path = os.path.join(os.path.expanduser(LOCAL_REGISTRY_PATH), f"{store_name}_prophet_model.json")
-        with open(model_path, 'r') as fin:
-            model = model_from_json(json.load(fin))  # Load model
-        return model
-
-    def ping(self):
-        """
-        You call ping I print pong.
-        """
-        print("pong")
-
-
+#
+# *** Crossvaldation ***
+#
     def cv_model(self,df,location) -> pd.DataFrame:
         '''
         Does a Crossvalidation for a given prepared df(ds,y).
@@ -341,3 +202,134 @@ class Tiniworld:
         report.to_csv(f'{LOCAL_REGISTRY_PATH}/report.csv')
         print(f'Done ... saved {n} models and one report to {LOCAL_REGISTRY_PATH}')
         return report
+
+
+#
+#  *** plotting stuff ***
+#
+    def plot_info(self,location,forecast=7,*args):
+        '''
+        forecast = int(number of days to forecast)
+        location = str(store code)
+
+        '''
+        #get all Data
+        df_all = self.get_stores_ds_alltime()
+
+        #select one location
+        df = df_all[location]
+
+        #prepare Data
+        df = df.groupby('ds').sum(numeric_only=False)[['y']].reset_index()
+
+        # Plot that shows the historical data by day of the week
+        dayofweek_colors = {0:'k',1:'r',2:'g',3:'b',4:'c',5:'m',6:'y'}
+        days = ['Mo','Tu','We','Th','Fr','Sa','So']
+        plt.close()
+        fig, ax = plt.subplots(figsize=(12,6))
+        ax.scatter(df['ds'], df['y'], c=df['ds'].dt.dayofweek.map(dayofweek_colors))
+        handles = [mpatches.Patch(color=v, label=k) for v, k in zip(dayofweek_colors.values(), days)]
+        legend = ax.legend(handles=handles,title="Day of the week")
+        ax.add_artist(legend)
+        plt.show()
+
+        model = self.load_model(location)
+        pred = self.predict_model(location,forecast)
+
+        fig1 = model.plot_components(pred)
+
+        return
+
+    def plot_forecast(self,location,forecast=60):
+        '''
+        forecast = int(number of days to forecast)
+        location = str(store code)
+        '''
+        #get all Data
+        df_all = self.get_stores_ds_alltime()
+
+        #select one location
+        df = df_all[location]
+
+        future = self.predict_model(location,forecast)
+
+        fc_time = (future.ds.max()-df.ds.max()).days
+
+        layout = {
+            # to highlight the forecast we use shapes and create a rectangular
+            'shapes': [
+                {
+                    'type': 'rect',
+                    # x-reference is assigned to the x-values
+                    'xref': 'x',
+                    # y-reference is assigned to the plot paper [0,1]
+                    'yref': 'paper',
+                    'x0': df.ds.max(),
+                    'y0': 0,
+                    'x1': future.ds.max(),
+                    'y1': 1,
+                    'fillcolor': '#ff9900', # color is orange
+                    'opacity': 0.5,
+                    'line': {
+                        'width': 0,
+                    }
+                }
+
+            ]
+        }
+
+        # Create figure
+        fig = go.Figure()
+
+        fig.add_trace(
+            go.Scatter(x=list(future.ds), y=list(future.yhat)))
+
+        # Set title
+        fig.update_layout(
+            title_text="Tickets sold in the last 2 years and forecast for 2 month"
+        )
+
+        fig.update_layout(layout)
+
+        # Add range slider with 2 options : forecast and all
+        fig.update_layout(
+            xaxis=dict(
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=fc_time-1,
+                            label="forecast",
+                            step="day",
+                            stepmode="todate"),
+                        dict(step="all")
+                    ])
+                ),
+                rangeslider=dict(
+                    visible=True
+                ),
+                type="date"
+            )
+        )
+
+        fig.show()
+
+
+#
+# *** deprecated ***
+#
+    # replaced by crossvalidation
+    def save_all_models(self):
+        all_df = self.get_stores_ds_alltime()
+        keys = list(all_df.keys())
+
+        #ouput path for saving models
+        save_path = os.path.join(os.path.expanduser(LOCAL_REGISTRY_PATH),"")
+        #f'../model/{store_name}_prophet_model.json'
+
+        for k in keys:
+
+            model = self.train_model(all_df[k])
+
+            with open(f'{save_path}/{k}_prophet_model.json', 'w') as fout:
+                json.dump(model_to_json(model), fout)  # Save model
+            print(f'saving {k}')
+        return keys
