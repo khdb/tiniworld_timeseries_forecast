@@ -66,19 +66,28 @@ class Tiniworld:
         dict_loc = {}
         for n in (store_code):
             dict_loc[n]=df[df['store_code']==n]
+
+        # update: integrated a new key for 'all' aka whole company
         all_company = self.get_all_company()
         dict_loc['all'] = all_company['all']
         return dict_loc
 
-    def get_all_company(self):
+    def get_all_company(self) -> dict:
+        '''
+        returns a dict with {'all': df}
+        '''
         raw = self.get_raw_data()
         raw['ds']= pd.to_datetime(raw.loc[:,'docDate'])
-        df_all_company = raw.groupby('ds').sum('qty').reset_index()#[['ds','qty']]
-        df_all_company = df_all_company.rename(columns={'qty': 'y'})
+        # df_all_company = raw.groupby('ds').sum('qty').reset_index()#[['ds','qty']]
+        df_all_company = raw
+        df_all_company['y'] = df_all_company['qty']
         all = {'all':df_all_company}
         return all
 
-    def get_store_names(self):
+    def get_store_names(self) -> list:
+        '''
+        returns a list with all the store_codes
+        '''
         all_df = self.get_stores_ds_alltime()
         keys = list(all_df.keys())
         return keys
@@ -300,7 +309,7 @@ class Tiniworld:
                     'x1': future.ds.max(),
                     'y1': 1,
                     'name' : 'forecast',
-                    'fillcolor': '#ff9900',
+                    'fillcolor': '#00ff77',
                     'opacity': 0.2,
                     'line': {
                         'width': 0,
