@@ -65,8 +65,17 @@ class Tiniworld:
         dict_loc = {}
         for n in (store_code):
             dict_loc[n]=df[df['store_code']==n]
-
+        all_company = self.get_all_company()
+        dict_loc['all'] = all_company['all']
         return dict_loc
+
+    def get_all_company(self):
+        raw = self.get_raw_data()
+        raw['ds']= pd.to_datetime(raw.loc[:,'docDate'])
+        df_all_company = raw.groupby('ds').sum('qty').reset_index()#[['ds','qty']]
+        df_all_company = df_all_company.rename(columns={'qty': 'y'})
+        all = {'all':df_all_company}
+        return all
 
     def get_store_names(self):
         all_df = self.get_stores_ds_alltime()
@@ -176,21 +185,23 @@ class Tiniworld:
         # return the parameters and MAE for this model
         return y
 
-    def cv_and_save_all_models(self):
+    def cv_and_save_all_models(self,all_over = False):
         '''
         Does a crossvalidation for each location,
         trains a model each with the best parameters and saves it.
         Returns a report.
         '''
         report = pd.DataFrame(columns=['changepoint_prior_scale','seasonality_prior_scale','location','mae'])
-        df_all = self.get_stores_ds_alltime()
-        store_names = self.get_store_names()
 
-        #select store
+        if not all_over:
+            df_all = self.get_stores_ds_alltime()
+            store_names = self.get_store_names()
+
+        else:
+            df_all = self.get_all_company()
+            store_names = ['all']
+
         n = len(store_names)
-
-        # If testing set n to 2
-        # n = 2
 
         for store_nu in range(n):
             location = store_names[store_nu]
@@ -250,10 +261,15 @@ class Tiniworld:
 
         #select one location
         df = df_all[location]
+
+
         future = self.make_future(location,forecast)
         pred = self.predict_model(location,forecast)
 
         fc_time = (future.ds.max()-df.ds.max()).days
+
+        df = df.groupby('ds').sum().reset_index()
+        print(df)
 
         layout = {
             # to highlight the prediction we use shapes and create a rectangular
@@ -300,14 +316,14 @@ class Tiniworld:
                                 ))
         # plot upper CI
         fig.add_trace(go.Scatter(x=pred['ds'],
-                                y=pred['yhat_upper'],
+                                y=pred['yhat_upper']*0.8,
                                 name='yhat_upper',
                                 mode='lines',
                                 line=dict(color='gray', width=1)
                                 ))
         # plot lower CI
         fig.add_trace(go.Scatter(x=pred['ds'],
-                                y=pred['yhat_lower'],
+                                y=pred['yhat_lower']*1.2,
                                 xsrc='2020-01-01',
                                 name='yhat_lower',
                                 mode='lines',
