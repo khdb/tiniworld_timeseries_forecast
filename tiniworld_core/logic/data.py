@@ -250,14 +250,15 @@ class Tiniworld:
 
         #select one location
         df = df_all[location]
-
-        future = self.predict_model(location,forecast)
+        future = self.make_future(location,forecast)
+        pred = self.predict_model(location,forecast)
 
         fc_time = (future.ds.max()-df.ds.max()).days
 
         layout = {
-            # to highlight the forecast we use shapes and create a rectangular
+            # to highlight the prediction we use shapes and create a rectangular
             'shapes': [
+                # highlight from enddate of datat + days of prediction
                 {
                     'type': 'rect',
                     # x-reference is assigned to the x-values
@@ -268,8 +269,9 @@ class Tiniworld:
                     'y0': 0,
                     'x1': future.ds.max(),
                     'y1': 1,
-                    'fillcolor': '#ff9900', # color is orange
-                    'opacity': 0.5,
+                    'name' : 'forecast',
+                    'fillcolor': '#ff9900',
+                    'opacity': 0.2,
                     'line': {
                         'width': 0,
                     }
@@ -281,37 +283,63 @@ class Tiniworld:
         # Create figure
         fig = go.Figure()
 
-        fig.add_trace(
-            go.Scatter(x=list(future.ds), y=list(future.yhat)))
+        y_max = df['y'].max()
 
-        # Set title
-        fig.update_layout(
-            title_text="Tickets sold in the last 2 years and forecast for 2 month"
-        )
+        # plot y
+        fig.add_trace(go.Scatter(x=df['ds'],
+                                y=df['y'],
+                                name='Ticket sales',
+                                mode='markers',
+                                marker=dict(color='black')))
+        # plot yhat
+        fig.add_trace(go.Scatter(x=pred['ds'],
+                                y=pred['yhat'],
+                                name='Predictions',
+                                mode='lines',
+                                line=dict(color='red', width=3)
+                                ))
+        # plot upper CI
+        fig.add_trace(go.Scatter(x=pred['ds'],
+                                y=pred['yhat_upper'],
+                                name='yhat_upper',
+                                mode='lines',
+                                line=dict(color='gray', width=1)
+                                ))
+        # plot lower CI
+        fig.add_trace(go.Scatter(x=pred['ds'],
+                                y=pred['yhat_lower'],
+                                xsrc='2020-01-01',
+                                name='yhat_lower',
+                                mode='lines',
+                                fill='tonexty',
+                                line=dict(color='gray', width=1)
+                                ))
 
+
+        # Add range slider
+        fig.update_layout(xaxis=dict(
+                                rangeselector=dict(
+                                buttons=list([
+                                    dict(count=fc_time-1,
+                                    label="forecast",
+                                    step="day",
+                                    stepmode="todate"),
+                                    dict(step="all")
+                                    ])
+                                    ),
+                                rangeslider=dict(
+                                visible=True
+                                ),
+                            type="date"
+                            ))
+
+        fig.update_layout(yaxis_range=[0,y_max],
+                        title=f"Tickets sold in the last 2 years and forecast for {forecast} days",
+                        template= "plotly_white"
+                        )
         fig.update_layout(layout)
 
-        # Add range slider with 2 options : forecast and all
-        fig.update_layout(
-            xaxis=dict(
-                rangeselector=dict(
-                    buttons=list([
-                        dict(count=fc_time-1,
-                            label="forecast",
-                            step="day",
-                            stepmode="todate"),
-                        dict(step="all")
-                    ])
-                ),
-                rangeslider=dict(
-                    visible=True
-                ),
-                type="date"
-            )
-        )
-
         fig.show()
-
 
 #
 # *** deprecated ***
