@@ -42,7 +42,8 @@ class Tiniworld:
         """
         This function returns a Python dict.
         Its keys should be 'store_code'
-        Its values should be pandas.DataFrames loaded from csv files
+        Its values should be pandas.DataFrames loaded from csv files.
+        with the key 'all' it returns a dataset for all the company.
         """
 
         df = get_data("ticket-sales") #filename without the file extenstion
@@ -82,6 +83,20 @@ class Tiniworld:
         keys = list(all_df.keys())
         return keys
 
+    def get_ratio(self,store=None):
+        '''
+        returns a pd.DataFrame with total sale, sale per adult, sale per kid
+        percentage of adults and percentage of kids for each store.
+        If given a store_code, it returns the percentage of kids for this store.
+        '''
+        df = self.get_raw_data().groupby('store_code').sum(numeric_only=True)
+        df['Kids %'] = df['Kids']/(df['Adults']+df['Kids'])
+        df['Adults %'] = 1-df['Kids %']
+        df = df.drop('Result',axis=1)
+        if not store:
+            return df
+        else:
+            return round(df.loc[store,'Kids %'],2)
 #
 #  *** modeling ***
 #
@@ -269,7 +284,6 @@ class Tiniworld:
         fc_time = (future.ds.max()-df.ds.max()).days
 
         df = df.groupby('ds').sum().reset_index()
-        print(df)
 
         layout = {
             # to highlight the prediction we use shapes and create a rectangular
