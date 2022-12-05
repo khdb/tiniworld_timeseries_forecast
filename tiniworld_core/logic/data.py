@@ -378,7 +378,11 @@ class Tiniworld:
                         )
         fig.update_layout(layout)
 
-        fig.show()
+        # use fig.show() to render the graphig/plot i.e. in Jupyter Notebook
+        #fig.show()
+        # return the fig object to use in Streamlit app, otherwise the graphic
+        # will trigger the browser to open a new tab to render the graphic as standalone.
+        return fig
 
 #
 # *** deprecated ***
