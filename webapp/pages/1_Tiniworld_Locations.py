@@ -8,6 +8,9 @@ import plotly.figure_factory as ff
 import matplotlib.pyplot as plt
 import plotly.express as px
 
+from tiniworld_core.logic.params import LOCAL_DATA_PATH
+
+
 # instanciating Tiniworld class
 tini = Tiniworld()
 
@@ -30,7 +33,7 @@ def show_line_plot(df):
 
 with tiniworldLocations:
     st.header('Tiniworld location')
-    location_file = "/Users/khoado/code/khdb/tiniworld_timeseries_forecast/raw_data/tw_location_info.csv" #Load OK
+    location_file = f"{LOCAL_DATA_PATH}/tw_location_info.csv" #Load OK
 
     #dtypes = {'store_code': object, 'shortName': object, 'city': object, 'country': object, 'latitude': float, 'longitude': float,}
     df_locations = pd.read_csv(location_file)

@@ -100,8 +100,8 @@ def project_goal_fig():
     fig.add_trace(trace2)
     fig.add_trace(trace3)
 
-    fig.update_layout(height=200,
-                         margin={'l': 20, 'r': 60, 't': 10, 'b': 10})
+    fig.update_layout(height=300,
+                         margin={'l': 20, 'r': 60, 't': 10, 'b': 20})
     return fig
 
 
@@ -120,7 +120,7 @@ with siteHeader:
   #st.text('In this project We look into Forecast and Prediction with Time-series data. We worked with the dataset from a Kids Entertainment and Attractions center')
 
   st.markdown('''
-In this project We look into Forecast and Prediction with Time-series data.
+In this project we look into Forecast and Prediction with Time-series data.
 We worked with the dataset from a Kids Entertainment and Attractions center
 
 ''')
