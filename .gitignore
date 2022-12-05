@@ -11,3 +11,7 @@ raw_data/
 khd_readme.txt
 .python-version
 /model
+Dockerfile
+requirements_prod.txt
+/training_outputs
+.env.yaml
