@@ -13,6 +13,14 @@ if 'ratio' not in st.session_state:
             st.session_state['ratio'] = 0
 if 'df_ratio' not in st.session_state:
             st.session_state['df_ratio'] = 0
+if 'color' not in st.session_state:
+            st.session_state['color'] = 'green'
+if 'compare' not in st.session_state:
+            st.session_state['compare'] = False
+if 'store_c' not in st.session_state:
+            st.session_state['store_c'] = 'TW-PS002'
+
+
 class AppFunktion:
 
 
@@ -47,10 +55,12 @@ class AppFunktion:
         self.load_session_state()
         store_names = tini.get_store_names()
 
+
         sn_df = pd.DataFrame(store_names)
         index_store = int(sn_df[sn_df[0]== st.session_state.store].index[0])
+        index_store_c = int(sn_df[sn_df[0]== st.session_state.store_c].index[0])
 
-        store_name = st.selectbox("Choose a store code", store_names, index=index_store,)
+        store_name = st.selectbox("Choose a store code", store_names, index=index_store,key='n')
         st.session_state['store'] = store_name
         ratio = tini.get_ratio()
         ratio = ratio[ratio.index==st.session_state['store']]
@@ -70,8 +80,6 @@ class AppFunktion:
         st.session_state['store_name'] = list(df_store[:1]['store_name'])[0]
         st.session_state['period'] = int(str(period).split()[0])
 
-
-
-
-
-        st.write(st.session_state )
+        st.session_state['compare'] = st.checkbox('compare')
+        if st.session_state.compare:
+            st.session_state['store_c'] = st.selectbox("Choose a store to compare", store_names, index=index_store_c, key='c')

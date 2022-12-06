@@ -491,11 +491,14 @@ class Tiniworld:
                                 )
         fig.update_layout(layout)
         return fig
-    def plot_sales(self,n):
 
+
+    def plot_sales(self,n):
+        '''
+        Scatter plot - total ticket sale per day
+        '''
         df = self.get_stores_ds_alltime()[n]
         df = df.groupby('ds').sum().reset_index()
-
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=df['ds'],
@@ -508,55 +511,49 @@ class Tiniworld:
                         title=f"Tickets sold in the last 2 years",
                         template= "plotly_white"
                         )
-
-
-
         return fig
 
     def plot_monthly(self,n):
+        '''
+        plot seasonal trend - year
+        '''
         model = self.load_model(n)
-        data,_ = plot_yearly(model);
-        date, value = data.get_data();
-
+        data,_ = plot_yearly(model)
+        date, value = data.get_data()
 
         fig = go.Figure()
+
         fig.add_trace(go.Scatter(x=date,
                                 y=value,
                                 name='Ticket sales',
                                 mode='lines',
                                 line_shape='spline',
-                                marker=dict(color='black')))
+                                line=dict(color='black')
+                                ))
         fig.update_layout(
                         yaxis_title="Trend",
                         xaxis_title="Day of year",
-                        title=f"Yearly Sales Trend",
+                        title=f"Season Trend",
                         template= "plotly_white"
                         )
-
-
-
         return fig
 
 
     def plot_weekday(self,n):
-
+        '''
+        plot seasonal trend - week
+        '''
         df = self.get_stores_ds_alltime()[n]
         df['day_name'] = df['ds'].dt.day_name()
         sorter = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday']
         sorterIndex = dict(zip(sorter,range(len(sorter))))
-
-        sorter = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday']
-        sorterIndex = dict(zip(sorter,range(len(sorter))))
         df['Day_id'] = df['day_name'].map(sorterIndex)
-        # df['Day_id'] =
         df = df.sort_values('Day_id')
         df.reset_index()
-
         df_dow = df.groupby('day_name').sum('y')[['y']]
         df_dow = df_dow.reset_index()
         df_dow['Day_id'] = df_dow['day_name'].map(sorterIndex)
         df_dow = df_dow.sort_values('Day_id')
-
 
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -565,14 +562,12 @@ class Tiniworld:
                                 name='distribution sales'),
                                 secondary_y= True)
 
-
         fig.add_trace(go.Scatter(x=df_dow.day_name,
                                 y=df_dow['y'],
                                 name='absolute sales',
                                 mode='lines',
                                 marker=dict(color='black')),
                                 secondary_y=False)
-
 
 
         fig.update_layout(
