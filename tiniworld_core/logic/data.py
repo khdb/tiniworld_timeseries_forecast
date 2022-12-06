@@ -6,13 +6,15 @@ from tiniworld_core.logic.params import LOCAL_REGISTRY_PATH
 from prophet import Prophet
 from prophet.diagnostics import cross_validation
 from prophet.serialize import model_to_json, model_from_json
-from prophet.plot import plot_cross_validation_metric, performance_metrics
+from prophet.plot import plot_cross_validation_metric, performance_metrics, plot_yearly
+from plotly.subplots import make_subplots
 
 import itertools
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import json
+import streamlit as st
 
 
 #KHD: 28.11.2022
@@ -24,7 +26,6 @@ class Tiniworld:
         You call ping I print pong.
         """
         print("pong")
-
 #
 # *** getting data ***
 #
@@ -36,7 +37,6 @@ class Tiniworld:
         '''
         df = get_data("ticket-sales") #filename without the file extenstion
         return df
-
     # get the dictionary containing all locations as DF
     def get_stores_ds_alltime(self) -> dict:
         """
@@ -101,7 +101,16 @@ class Tiniworld:
         df = self.get_raw_data().groupby('store_code').sum(numeric_only=True)
         df['Kids %'] = df['Kids']/(df['Adults']+df['Kids'])
         df['Adults %'] = 1-df['Kids %']
+        # drop 'Result'
         df = df.drop('Result',axis=1)
+        y = list(df.index)
+        # remove all none playgrounds
+        l = [(i[:2])=='TW' for i in y]
+        df = df[l]
+        #add sales ranking
+        df = df.sort_values('qty',ascending=False)
+        df['rank'] = (df.reset_index().index)+1
+
         if not store:
             return df
         else:
@@ -148,7 +157,6 @@ class Tiniworld:
         pred = model.predict(future)
 
         return pred
-
 #
 # *** Crossvaldation ***
 #
@@ -237,8 +245,6 @@ class Tiniworld:
         report.to_csv(f'{LOCAL_REGISTRY_PATH}/report.csv')
         print(f'Done ... saved {n} models and one report to {LOCAL_REGISTRY_PATH}')
         return report
-
-
 #
 #  *** plotting stuff ***
 #
@@ -271,9 +277,10 @@ class Tiniworld:
         model = self.load_model(location)
         pred = self.predict_model(location,forecast)
 
-        fig1 = model.plot_components(pred)
+        # fig1 = model.plot_components(pred)
+        fig2 = plot_yearly(model)
 
-        return
+        return fig, fig2
 
     def plot_forecast(self,location,forecast=60):
         '''
@@ -384,23 +391,197 @@ class Tiniworld:
         # will trigger the browser to open a new tab to render the graphic as standalone.
         return fig
 
-#
-# *** deprecated ***
-#
-    # replaced by crossvalidation
-    def save_all_models(self):
-        all_df = self.get_stores_ds_alltime()
-        keys = list(all_df.keys())
+    def plot_trend(self,location,forecast=0):
+        '''
+        forecast = int(number of days to forecast)
+        location = str(store code)
 
-        #ouput path for saving models
-        save_path = os.path.join(os.path.expanduser(LOCAL_REGISTRY_PATH),"")
-        #f'../model/{store_name}_prophet_model.json'
+        If forecast is 0 it gives back a simple plot for just the given data.
+        If forecast is more than 0 it gives back a plot with more details and interactivity
 
-        for k in keys:
+        Returns a a value of the trend, and a fig of the graph
+        '''
+        #get all Data
+        df_all = self.get_stores_ds_alltime()
 
-            model = self.train_model(all_df[k])
+        #select one location
+        df = df_all[location]
 
-            with open(f'{save_path}/{k}_prophet_model.json', 'w') as fout:
-                json.dump(model_to_json(model), fout)  # Save model
-            print(f'saving {k}')
-        return keys
+
+        future = self.make_future(location,forecast)
+        pred = self.predict_model(location,forecast)
+
+        fc_time = (future.ds.max()-df.ds.max()).days
+
+        df = df.groupby('ds').sum(numeric_only= True).reset_index()
+
+        trend = round(float(pred.loc[pred.index[-1],'trend'])-float(pred.loc[pred.index[-2:-1],'trend']),2)
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(x=pred['ds'],
+                                        y=pred['trend'],
+                                        name='Ticket sales',
+                                        mode='lines',
+                                        marker=dict(color='black')))
+        fig.update_layout(
+            yaxis_title="Ticket Sales per day"
+            )
+        if not forecast == 0:
+            # plot upper trend variance
+            fig.add_trace(go.Scatter(x=pred['ds'],
+                                            y=pred['trend_upper'],
+                                            name='Trend hight',
+                                            mode='lines',
+                                            line=dict(color='gray', width=1)
+                                            ))
+            # plot lower trend variance
+            fig.add_trace(go.Scatter(x=pred['ds'],
+                                            y=pred['trend_lower'],
+                                            name='Trend low',
+                                            mode='lines',
+                                            fill='tonexty',
+                                            line=dict(color='gray', width=1)
+                                            ))
+            # Add range slider
+            fig.update_layout(xaxis=dict(
+                                rangeselector=dict(
+                                buttons=list([
+                                    dict(count=fc_time-1,
+                                    label="forecast",
+                                    step="day",
+                                    stepmode="todate"),
+                                    dict(step="all")
+                                    ])
+                                    ),
+                                rangeslider=dict(
+                                visible=True
+                                ),
+                            type="date"
+                            ))
+        layout = {
+        # to highlight the prediction we use shapes and create a rectangular
+        'shapes': [
+            # highlight from enddate of datat + days of prediction
+            {
+                'type': 'rect',
+                # x-reference is assigned to the x-values
+                'xref': 'x',
+                # y-reference is assigned to the plot paper [0,1]
+                'yref': 'paper',
+                'x0': df.ds.max(),
+                'y0': 0,
+                'x1': future.ds.max(),
+                'y1': 1,
+                'name' : 'forecast',
+                'fillcolor': '#00ff77',
+                'opacity': 0.2,
+                'line': {
+                    'width': 0,
+                }
+            }
+
+        ]
+        }
+        fig.update_layout(layout)
+
+
+        fig.update_layout(title=f"Trend",
+                                template= "plotly_white"
+                                )
+        fig.update_layout(layout)
+        return fig
+    def plot_sales(self,n):
+
+        df = self.get_stores_ds_alltime()[n]
+        df = df.groupby('ds').sum().reset_index()
+
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df['ds'],
+                                y=df['y'],
+                                name='Ticket sales',
+                                mode='markers',
+                                marker=dict(color='black')))
+        fig.update_layout(
+                        yaxis_title="Ticket Sales per day",
+                        title=f"Tickets sold in the last 2 years",
+                        template= "plotly_white"
+                        )
+
+
+
+        return fig
+
+    def plot_monthly(self,n):
+        model = self.load_model(n)
+        data,_ = plot_yearly(model);
+        date, value = data.get_data();
+
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=date,
+                                y=value,
+                                name='Ticket sales',
+                                mode='lines',
+                                line_shape='spline',
+                                marker=dict(color='black')))
+        fig.update_layout(
+                        yaxis_title="Trend",
+                        xaxis_title="Day of year",
+                        title=f"Yearly Sales Trend",
+                        template= "plotly_white"
+                        )
+
+
+
+        return fig
+
+
+    def plot_weekday(self,n):
+
+        df = self.get_stores_ds_alltime()[n]
+        df['day_name'] = df['ds'].dt.day_name()
+        sorter = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday']
+        sorterIndex = dict(zip(sorter,range(len(sorter))))
+
+        sorter = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday']
+        sorterIndex = dict(zip(sorter,range(len(sorter))))
+        df['Day_id'] = df['day_name'].map(sorterIndex)
+        # df['Day_id'] =
+        df = df.sort_values('Day_id')
+        df.reset_index()
+
+        df_dow = df.groupby('day_name').sum('y')[['y']]
+        df_dow = df_dow.reset_index()
+        df_dow['Day_id'] = df_dow['day_name'].map(sorterIndex)
+        df_dow = df_dow.sort_values('Day_id')
+
+
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+        fig.add_trace(go.Box(x=df.day_name,
+                                y=df['y'],
+                                name='distribution sales'),
+                                secondary_y= True)
+
+
+        fig.add_trace(go.Scatter(x=df_dow.day_name,
+                                y=df_dow['y'],
+                                name='absolute sales',
+                                mode='lines',
+                                marker=dict(color='black')),
+                                secondary_y=False)
+
+
+
+        fig.update_layout(
+                        yaxis_title="Ticket Sales",
+                        title=f"Sales per weekday",
+                        template= "plotly_white"
+                        )
+
+        fig.update_yaxes(title_text="absolut sales per weekday", secondary_y=False)
+        fig.update_yaxes(title_text="distribution sales per weekday", secondary_y=True)
+
+        return fig

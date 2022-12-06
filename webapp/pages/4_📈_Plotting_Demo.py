@@ -1,4 +1,3 @@
-from tiniworld_core.logic.data import Tiniworld
 import pandas as pd  #1
 import streamlit as st
 import numpy as np
@@ -7,10 +6,19 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 
+from tiniworld_core.logic.data import Tiniworld
+from webapp.methods import AppFunktion
+
 # instanciating Tiniworld class
 tini = Tiniworld()
+AF= AppFunktion()
 
 st.set_page_config(page_title="Make Forecast", page_icon="📈", layout="wide")
+
+
+with st.sidebar:
+    AF.sidebar()
+
 
 
 plotingDemoLine = st.container()
