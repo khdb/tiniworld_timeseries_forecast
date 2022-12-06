@@ -53,3 +53,19 @@ pypi_test:
 
 pypi:
 	@twine upload dist/* -u $(PYPI_USERNAME)
+
+
+# --------------------------------------
+#      Model Training and predictions
+# --------------------------------------
+
+PYPI_USERNAME=<AUTHOR>
+# Train a forecast model for entire dataset as a whole to see trend/seasonality of whole company
+run_train_all:
+        #python -c 'from taxifare.interface.main import train; train()'
+				python -c 'from tiniworld_core.interface.main import run_train_consolidated_stores ;run_train_consolidated_stores()';
+
+PYPI_USERNAME=<AUTHOR>
+# Train a forecast model for every single location
+run_train_single:
+				python -c 'from tiniworld_core.interface.main import train_single_store; train_single_store()';
