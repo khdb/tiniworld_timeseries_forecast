@@ -4,7 +4,7 @@ import pandas as pd
 from colorama import Fore, Style
 
 from tiniworld_core.data_sources.local_disk import get_data
-
+from tiniworld_core.logic.data import Tiniworld
 
 def preprocess():
     """
@@ -24,6 +24,17 @@ def preprocess():
     print("Shape of the data frame: ", data_.shape)
 
     return None
+
+# KHD: 06.12.2022
+def train_single_store():
+    tini = Tiniworld()
+    tini.cv_and_save_all_models(all_over=False)
+
+
+def train_consolidated_stores():
+    tini = Tiniworld()
+    tini.cv_and_save_all_models(all_over=True)
+
 
 
 if __name__ == '__main__':
