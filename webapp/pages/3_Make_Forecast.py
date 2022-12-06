@@ -1,5 +1,6 @@
 
 from tiniworld_core.logic.data import Tiniworld
+from webapp.methods import AppFunktion
 import pandas as pd  #1
 import streamlit as st
 import numpy as np
@@ -10,18 +11,28 @@ import plotly.graph_objects as go
 
 # instanciating Tiniworld class
 tini = Tiniworld()
+AF = AppFunktion()
 
-st.set_page_config(page_title="Make Forecast", page_icon="📈", layout="wide")
+st.set_page_config(page_title=f"Make Forecast {st.session_state.store}", page_icon="📈", layout="wide")
+
+
+st.session_state['df_ratio']
+
+with st.sidebar:
+    AF.sidebar()
+
+
+
+
+f'''
+    Store number is {st.session_state['store']}'''
 
 modelPrediction = st.container()
 
-# todo: violin plot on qty, df.describe to get statistic
-# todo: box plot angroup by month (i.e. df.dt.mmonth -> boxplot)
-# todo: seaborn histogram + KDE and applying CMAP (Colormap) on histogram
 
-# KHD: 05.12.2002
-# call the plot functions in tiniworld_core.logic.data
-# it should return a fig (Plotly fig object) to use here in stremalit for plotting
+
+
+
 def plot_forecast_new(location,forecast=60):
     #KHD for demo
     #all_stores_dict = tini.get_stores_ds_alltime()
