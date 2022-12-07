@@ -12,12 +12,14 @@ import plotly.express as px
 from tiniworld_core.logic.params import LOCAL_DATA_PATH
 from webapp.methods import AppFunktion
 
+
+st.set_page_config(page_title="Tiniworld locations", page_icon="🌍", layout="wide",initial_sidebar_state = "expanded")
+
+
 # instanciating Tiniworld class
 tini = Tiniworld()
 AF = AppFunktion()
 AF.load_session_state()
-
-st.set_page_config(page_title="Tiniworld locations", page_icon="🌍", layout="wide")
 
 with st.sidebar:
     AF.sidebar()

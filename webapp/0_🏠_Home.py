@@ -12,12 +12,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+st.set_page_config(page_title="Tiniworld", page_icon="🏠", layout="wide",   initial_sidebar_state = "expanded")
+
 # instanciating Tiniworld class
 tini = Tiniworld()
 AF = AppFunktion()
 AF.load_session_state()
 
-st.set_page_config(page_title="Tiniworld", page_icon="🏠", layout="wide",   initial_sidebar_state = "expanded")
 
 siteHeader = st.container()
 projectGoalPlot = st.container()
