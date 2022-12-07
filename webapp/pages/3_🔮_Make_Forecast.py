@@ -13,7 +13,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title=f"Forecast", page_icon="🔮", layout="wide",initial_sidebar_state = "expanded")
 
 
-# instanciating Tiniworld class
+# instanceating Tiniworld class
 tini = Tiniworld()
 AF = AppFunktion()
 
@@ -40,20 +40,21 @@ with modelPrediction:
             width=80,
         )
 
-  #st.text('Here you can select the location name and number of days to forecast in the future!')
+    #st.text('Here you can select the location name and number of days to forecast in the future!')
 
 
-    period_to_forecast = st.slider('What should be the number of days in the future to predict?',
-        min_value=60, max_value=365,
-        value=60,
-        step=1)
+    # period_to_forecast = st.slider('What should be the number of days in the future to predict?',
+    #     min_value=60, max_value=365,
+    #     value=60,
+    #     step=1)
 
 
-    if st.button("Make Forecast"):
-        #st.write(f'{st.session_state.store} - {period_to_forecast}' )
+    # if st.button("Make Forecast"):
+    #     #st.write(f'{st.session_state.store} - {period_to_forecast}' )
 
-        #Ploting the graph
-        fig_fc = tini.plot_forecast(st.session_state.store, period_to_forecast)
+    #Ploting the graph
+    period_to_forecast = 365
+    fig_fc = tini.plot_forecast(st.session_state.store, period_to_forecast)
 
-        fig_fc.update_layout(width=1000)
-        st.write(fig_fc)
+    fig_fc.update_layout(width=1000)
+    st.write(fig_fc)

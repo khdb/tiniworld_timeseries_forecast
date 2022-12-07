@@ -508,14 +508,28 @@ class Tiniworld:
         Scatter plot - total ticket sale per day
         '''
         df = self.get_stores_ds_alltime()[n]
-        df = df.groupby('ds').sum().reset_index()
+
+        day_color = {'Mo':'blueviolet','Tu':'cyan','We':'orange','Th':'red','Fr':'green','Sa':'blue','Su':'black'}
+        sorter = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa','Su']
+        sorterIndex = dict(zip(sorter,range(len(sorter))))
+
+        df = df.groupby('ds').sum(numeric_only=True)
+        df = df.reset_index()
+        df['day'] = df.ds.dt.day_name().map(lambda x : str(x)[:2])
+        df['Day_id'] = df['day'].map(sorterIndex)
+        df = df.sort_values('Day_id')
+        df = df.reset_index()
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df['ds'],
-                                y=df['y'],
-                                name='Ticket sales',
+        for d,c in day_color.items():
+            df_t = df[df['day']==d]
+            fig.add_trace(go.Scatter(x=df_t['ds'],
+                                y=df_t['y'],
+                                name=d,
                                 mode='markers',
-                                marker=dict(color='black')))
+                                marker_color = c,
+                                ))
+
         fig.update_layout(
                         yaxis_title="Ticket sales per day",
                         title=f"Tickets sold in the last 2 years",
@@ -555,25 +569,37 @@ class Tiniworld:
         plot seasonal trend - week
         '''
         df = self.get_stores_ds_alltime()[n]
-        df['day_name'] = df['ds'].dt.day_name()
-        sorter = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday','Sunday']
+
+        day_color = {'Mo':'blueviolet','Tu':'cyan','We':'orange','Th':'red','Fr':'green','Sa':'blue','Su':'black'}
+        sorter = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa','Su']
         sorterIndex = dict(zip(sorter,range(len(sorter))))
-        df['Day_id'] = df['day_name'].map(sorterIndex)
+
+        df = df.groupby('ds').sum(numeric_only=True)
+        df = df.reset_index()
+        df['day'] = df.ds.dt.day_name().map(lambda x : str(x)[:2])
+        df['Day_id'] = df['day'].map(sorterIndex)
         df = df.sort_values('Day_id')
-        df.reset_index()
-        df_dow = df.groupby('day_name').sum('y')[['y']]
-        df_dow = df_dow.reset_index()
-        df_dow['Day_id'] = df_dow['day_name'].map(sorterIndex)
+        df = df.reset_index()
+
+        df_dow = df.groupby('day').sum(numeric_only=True).reset_index()
+        df_dow['Day_id'] = df_dow['day'].map(sorterIndex)
         df_dow = df_dow.sort_values('Day_id')
+        df_dow = df_dow.reset_index()
+
+        y_max = int(df_dow['y'].max()*1.1)
 
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-        fig.add_trace(go.Box(x=df.day_name,
-                                y=df['y'],
-                                name='Distribution sales'),
+        for d,c in day_color.items():
+            df_t = df[df['day']==d]
+            fig.add_trace(go.Box(x=df_t.day,
+                                y=df_t['y'],
+                                name=d,
+                                fillcolor=c,
+                                line_color = 'gray'),
                                 secondary_y= True)
 
-        fig.add_trace(go.Scatter(x=df_dow.day_name,
+        fig.add_trace(go.Scatter(x=df_dow.day,
                                 y=df_dow['y'],
                                 name='Absolute sales',
                                 mode='lines',
@@ -587,7 +613,6 @@ class Tiniworld:
                         template= "plotly_white"
                         )
 
-        fig.update_yaxes(title_text="Absolut sales per weekday", secondary_y=False)
+        fig.update_yaxes(range=(0,y_max),title_text="Absolut sales per weekday", secondary_y=False)
         fig.update_yaxes(title_text="Distribution sales per weekday", secondary_y=True)
-
         return fig

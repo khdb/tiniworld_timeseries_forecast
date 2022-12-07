@@ -8,20 +8,14 @@ from prophet import Prophet
 from prophet.plot import plot_cross_validation_metric, performance_metrics, plot_yearly, plot_weekly
 from plotly.subplots import make_subplots
 
-
 from tiniworld_core.logic.data import Tiniworld
 from webapp.methods import AppFunktion
 
 st.set_page_config(page_title="Data Exploration", page_icon="📈", layout="wide", initial_sidebar_state = "expanded")
 
-
 # instanciating Tiniworld class
 tini = Tiniworld()
 AF = AppFunktion()
-
-
-
-
 
 with st.sidebar:
     AF.sidebar()
@@ -101,11 +95,12 @@ with dataExploration:
     fig3 = tini.plot_weekday(n)
     if st.session_state.compare == True:
         fig3_c = tini.plot_weekday(c)
-        fig3_c.data[1].marker['color'] = 'green'
-        fig3_c.data[1].name = f'compare to {c}'
-        fig3.data[1].name = f'Absolute for {n}'
-        fig3.add_trace(fig3_c.data[1])
-
+        fig3_c.data[-1].marker['color'] = 'green'
+        fig3_c.data[-1].name = f'compare to {c}'
+        fig3.data[-1].name = f'Absolute for {n}'
+        fig3.add_trace(fig3_c.data[-1])
+        y_max = int(np.max([fig3_c.data[-1]['y'].max(),fig3.data[-2]['y'].max()])*1.1)
+        fig3.layout['yaxis']['range'] = (0,y_max)
 
 
     fig3.update_layout(width=1000)
