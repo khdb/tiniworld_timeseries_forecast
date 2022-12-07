@@ -6,7 +6,11 @@ import datetime as dt
 tini = Tiniworld()
 
 if 'store' not in st.session_state:
-            st.session_state['store'] = 'TW-PS008'
+    st.session_state['store'] = 'TW-PS008'
+if 'forecast' not in st.session_state:
+    st.session_state['forecast'] = 60
+if 'store' not in st.session_state:
+    st.session_state['store'] = 'TW-PS008'
 if 'forecast' not in st.session_state:
             st.session_state['forecast'] = 60
 if 'ratio' not in st.session_state:
@@ -20,18 +24,32 @@ if 'compare' not in st.session_state:
 if 'store_c' not in st.session_state:
             st.session_state['store_c'] = 'TW-PS002'
 
-
 class AppFunktion:
-
-
 
     def load_session_state(self):
         if 'store' not in st.session_state:
             st.session_state['store'] = 'TW-PS008'
         if 'forecast' not in st.session_state:
             st.session_state['forecast'] = 60
+        if 'store' not in st.session_state:
+            st.session_state['store'] = 'TW-PS008'
+        if 'forecast' not in st.session_state:
+                    st.session_state['forecast'] = 60
+        if 'ratio' not in st.session_state:
+                    st.session_state['ratio'] = 0
+        if 'df_ratio' not in st.session_state:
+                    st.session_state['df_ratio'] = 0
+        if 'color' not in st.session_state:
+                    st.session_state['color'] = 'green'
+        if 'compare' not in st.session_state:
+                    st.session_state['compare'] = False
+        if 'store_c' not in st.session_state:
+                    st.session_state['store_c'] = 'TW-PS002'
+
+
 
     def load_data(self,n = st.session_state['store'], t = st.session_state['forecast']):   # n = storecode, t= time of days to forecast
+        self.load_session_state()
         pred = tini.predict_model(n,t)
         now = str(dt.date.today())
         last_day = pred['ds'].max()
@@ -58,9 +76,9 @@ class AppFunktion:
 
         sn_df = pd.DataFrame(store_names)
         index_store = int(sn_df[sn_df[0]== st.session_state.store].index[0])
-        index_store_c = int(sn_df[sn_df[0]== st.session_state.store_c].index[0])
 
-        store_name = st.selectbox("Choose a store code", store_names, index=index_store,key='n')
+
+        store_name = st.selectbox("Choose a store code to look at!", store_names, index=index_store,key='n')
         st.session_state['store'] = store_name
         ratio = tini.get_ratio()
         ratio = ratio[ratio.index==st.session_state['store']]
@@ -80,6 +98,12 @@ class AppFunktion:
         st.session_state['store_name'] = list(df_store[:1]['store_name'])[0]
         st.session_state['period'] = int(str(period).split()[0])
 
+
+    def sidebare_2(self):
+        #st.write('_____')
+        store_names = tini.get_store_names()
+        sn_df = pd.DataFrame(store_names)
+        index_store_c = int(sn_df[sn_df[0]== st.session_state.store_c].index[0])
         st.session_state['compare'] = st.checkbox('compare')
         if st.session_state.compare:
-            st.session_state['store_c'] = st.selectbox("Choose a store to compare", store_names, index=index_store_c, key='c')
+            st.session_state['store_c'] = st.selectbox("Choose a store to compare to!", store_names, index=index_store_c, key='c')

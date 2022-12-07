@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 
+
+st.set_page_config(page_title=f"Forecast", page_icon="🔮", layout="wide",initial_sidebar_state = "expanded")
+
+
 # instanciating Tiniworld class
 tini = Tiniworld()
 AF = AppFunktion()
-
-
-
-st.set_page_config(page_title=f"Forecast", page_icon="🔮", layout="wide")
 
 
 with st.sidebar:

@@ -12,12 +12,14 @@ from plotly.subplots import make_subplots
 from tiniworld_core.logic.data import Tiniworld
 from webapp.methods import AppFunktion
 
+st.set_page_config(page_title="Data Exploration", page_icon="📈", layout="wide", initial_sidebar_state = "expanded")
+
+
 # instanciating Tiniworld class
 tini = Tiniworld()
 AF = AppFunktion()
 
 
-st.set_page_config(page_title="Data Exploration", page_icon="📈", layout="wide", initial_sidebar_state = "expanded")
 
 
 

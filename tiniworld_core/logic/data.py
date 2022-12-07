@@ -99,17 +99,23 @@ class Tiniworld:
         If given a store_code, it returns the percentage of kids for this store.
         '''
         df = self.get_raw_data().groupby('store_code').sum(numeric_only=True)
-        df['Kids %'] = df['Kids']/(df['Adults']+df['Kids'])
-        df['Adults %'] = 1-df['Kids %']
-        # drop 'Result'
-        df = df.drop('Result',axis=1)
-        y = list(df.index)
         # remove all none playgrounds
+        y = list(df.index)
         l = [(i[:2])=='TW' for i in y]
         df = df[l]
+        #impute row 'all'
+        all_sd = pd.DataFrame(df.sum()).T
+        all_sd['store_code'] = 'all'
+        all_sd = all_sd.set_index('store_code')
+        df = pd.concat([df,all_sd])
+        df
+
+        df['Kids %'] = df['Kids']/(df['Adults']+df['Kids'])
+        df['Adults %'] = 1-df['Kids %']
+        df = df.drop('Result',axis=1)
         #add sales ranking
         df = df.sort_values('qty',ascending=False)
-        df['rank'] = (df.reset_index().index)+1
+        df['rank'] = (df.reset_index().index)
 
         if not store:
             return df
@@ -346,14 +352,14 @@ class Tiniworld:
                                 ))
         # plot upper CI
         fig.add_trace(go.Scatter(x=pred['ds'],
-                                y=pred['yhat_upper']*0.8,
+                                y=pred['yhat_upper'],
                                 name='yhat_upper',
                                 mode='lines',
                                 line=dict(color='gray', width=1)
                                 ))
         # plot lower CI
         fig.add_trace(go.Scatter(x=pred['ds'],
-                                y=pred['yhat_lower']*1.2,
+                                y=pred['yhat_lower'],
                                 xsrc='2020-01-01',
                                 name='yhat_lower',
                                 mode='lines',
@@ -379,7 +385,9 @@ class Tiniworld:
                             type="date"
                             ))
 
-        fig.update_layout(yaxis_range=[0,y_max],
+        fig.update_layout(yaxis_range=[0,y_max+20],
+                          xaxis_title='Time line',
+                          yaxis_title='Ticket sale per day',
                         title=f"Tickets sold in the last 2 years and forecast for {forecast} days",
                         template= "plotly_white"
                         )
@@ -487,11 +495,13 @@ class Tiniworld:
 
 
         fig.update_layout(title=f"Trend",
-                                template= "plotly_white"
+                                template= "plotly_white",
+                                yaxis_title="Ticket sales per day",
+                                xaxis_title="Day of year",
+
                                 )
         fig.update_layout(layout)
         return fig
-
 
     def plot_sales(self,n):
         '''
@@ -507,10 +517,12 @@ class Tiniworld:
                                 mode='markers',
                                 marker=dict(color='black')))
         fig.update_layout(
-                        yaxis_title="Ticket Sales per day",
+                        yaxis_title="Ticket sales per day",
                         title=f"Tickets sold in the last 2 years",
+                        xaxis_title="Day of year",
                         template= "plotly_white"
                         )
+
         return fig
 
     def plot_monthly(self,n):
@@ -538,7 +550,6 @@ class Tiniworld:
                         )
         return fig
 
-
     def plot_weekday(self,n):
         '''
         plot seasonal trend - week
@@ -559,24 +570,24 @@ class Tiniworld:
 
         fig.add_trace(go.Box(x=df.day_name,
                                 y=df['y'],
-                                name='distribution sales'),
+                                name='Distribution sales'),
                                 secondary_y= True)
 
         fig.add_trace(go.Scatter(x=df_dow.day_name,
                                 y=df_dow['y'],
-                                name='absolute sales',
+                                name='Absolute sales',
                                 mode='lines',
                                 marker=dict(color='black')),
                                 secondary_y=False)
 
-
         fig.update_layout(
-                        yaxis_title="Ticket Sales",
+                        yaxis_title="Ticket sales",
+                        xaxis_title='Weekday',
                         title=f"Sales per weekday",
                         template= "plotly_white"
                         )
 
-        fig.update_yaxes(title_text="absolut sales per weekday", secondary_y=False)
-        fig.update_yaxes(title_text="distribution sales per weekday", secondary_y=True)
+        fig.update_yaxes(title_text="Absolut sales per weekday", secondary_y=False)
+        fig.update_yaxes(title_text="Distribution sales per weekday", secondary_y=True)
 
         return fig
