@@ -4,6 +4,12 @@ import os
 from colorama import Fore, Style
 from tiniworld_core.logic.params import LOCAL_DATA_PATH
 
+def ping() -> str:
+    """
+    you call ping, i say pong
+    """
+    print('pong')
+    return
 
 def get_data(path: str,
                      columns: list = None,
@@ -83,8 +89,6 @@ def get_data(path: str,
     df['Kids'] = (df['Result'] == False)* df['qty']
 
     return df
-
-
 
 # Get location Data
 def get_location_data(path: str,

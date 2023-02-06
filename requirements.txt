@@ -9,6 +9,7 @@ seaborn
 scikit-learn
 jupyter
 plotly
+streamlit
 
 python-dotenv
 
